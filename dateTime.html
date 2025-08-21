@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set date and time</title>
+    <link rel="shortcut icon" href="data:," />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 400px;
+            margin: auto;
+        }
+        .container {
+            background: white;
+            padding: 5px 30px 30px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: left;
+            position: relative;
+            width: 300px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+        .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        input[type="text"], input[type="password"], input[type="date"], input[type="time"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            margin-top: 5px;
+        }
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        button, .back-button {
+            bottom: 15px;
+            right: 20px;
+            padding: 8px 16px;
+            background: ;
+            /*color: #fff;*/
+            text-decoration: none;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button, .set-button {
+            bottom: 15px;
+            right: 20px;
+            padding: 8px 16px;
+            background: ;
+            /*color: #fff;*/
+            text-decoration: none;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .back-button:hover {
+            background: #0056b3;
+        }
+        .back-button {
+            background-color: #007BFF;
+            color: #fff;
+        }
+        .set-button:hover {
+            background-color: #4C9F40;
+        }
+        .set-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h2>Date and Time</h2>
+    <div class="container">
+        <p>This page uses <a href="Puck.js+Web+Bluetooth">Web Bluetooth</a> to set the current time on your Bluetooth LE-enabled Espruino device direct from the web page.</p>
+        <p><div class="form-group">
+          <label class="form-switch">
+            <input type="checkbox" id="sendbreak" checked>
+            <i class="form-icon"></i> Send Ctrl-C &#39;break&#39; character (may cancel active timers)
+          </label>
+        </div></p>
+        <p><div class="form-group">
+          <label class="form-switch">
+            <input type="checkbox" id="sendreload" checked>
+            <i class="form-icon"></i> Reload after setting time
+          </label><br></div></p>
+        <p><div class="form-group"> </div><br><span id="status"></span></p>
+
+
+         <div class="button-row">
+            <button id="setTime" type="button" class="set-button">Set Time!</button>
+            <a href="index.html" class="back-button">Back</a>
+        </div>
+    </form>
+    </div>
+</body>
+<script src="https://www.puck-js.com/puck.js"></script>
+<script>
+// Force HTTPS - needed for web bluetooth
+var l = window.location.toString();
+if (l.substr(0,7)=="http://" && !window.location.port)
+  window.location = "https://"+l.substr(7);
+
+var sendBreak = document.getElementById("sendbreak").checked;
+var sendReload = document.getElementById("sendreload").checked;
+
+document.getElementById("setTime").addEventListener("click",function() {
+  document.getElementById("status").innerHTML = "Connecting...";
+  Puck.write(sendBreak ? " \x03" : " ",function() {
+    document.getElementById("status").innerHTML = "Connected.";
+    // give the connection time to negotiate a higher speed
+    // higher speed = less time delay between time sent
+    // and being updated
+    setTimeout(function() {
+      document.getElementById("status").innerHTML = "Setting time...";
+      Puck.setTime(function() {
+        if (sendReload) Puck.write("load()\n", function() {});
+        setTimeout(function() {
+          Puck.close();
+          document.getElementById("status").innerHTML = "";
+          window.alert("Time set successfully!");
+        }, 100);
+      });
+    }, 1000);
+  });
+});
+</script>
+
+</html>
