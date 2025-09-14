@@ -72,15 +72,18 @@
           }
         });
 
-        // List files in storage
-        //connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
-          //try {
-            //let files = JSON.parse(d);
+         List files in storage
+        connection.on('data', function(d) {
+            console.log("DATA: " + d)
             //document.getElementById("files").innerText = files.join('\n');
-          //} catch (e) {
-            //document.getElementById("files").innerText = d;
-          //}
-        //});
+        });
+        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+          try {
+            console.log("SENT");
+          } catch (e) {
+            console.log("ERROR: " + e);
+          }
+        });
       });
     }
   </script>
