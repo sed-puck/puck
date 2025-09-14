@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Puck.js Time & Storage Viewer</title>
+  <meta charset="utf-8">
+  <script src="https://www.puck-js.com/puck.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    button {
+      background: #007acc;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    pre {
+      background: #eee;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Puck.js Time & Storage Viewer</h1>
+  <button onclick="connectPuck()">Connect to Puck.js</button>
+
+  <div id="output">
+    <h2>Current Time</h2>
+    <p id="time">Not connected</p>
+
+    <h2>Files in Storage</h2>
+    <pre id="files">Not connected</pre>
+  </div>
+
+  <script>
+    function connectPuck() {
+      Puck.connect(function(connection) {
+        if (!connection) {
+          alert("Couldn't connect!");
+          return;
+        }
+
+        // Get current time
+        connection.write("JSON.stringify(Date())\n", function(d) {
+          try {
+            document.getElementById("time").innerText = JSON.parse(d);
+          } catch (e) {
+            document.getElementById("time").innerText = d;
+          }
+        });
+
+        // List files in storage
+        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+          try {
+            let files = JSON.parse(d);
+            document.getElementById("files").innerText = files.join('\n');
+          } catch (e) {
+            document.getElementById("files").innerText = d;
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>

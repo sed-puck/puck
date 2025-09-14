@@ -21,7 +21,6 @@
 
     <label>Choose file (packed BCD binary): <input id="file" type="file" /></label>
     <label>Upload filename (on Puck.js Storage): <input id="filename" type="text" placeholder="example.bin" /></label>
-    <label><input id="requireAck" type="checkbox" /> Require device ACK between chunks (toggle if your Puck-side code supports it)</label>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button id="connectBtn">Connect to Puck.js</button>
@@ -39,10 +38,9 @@
   </div>
 
 <script>
-// CONFIG: Nordic UART Service (NUS) UUIDs commonly used by Puck.js
 const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const NUS_TX_CHAR    = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // write from central -> puck
-const NUS_RX_CHAR    = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notify from puck -> central
+const NUS_TX_CHAR    = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX_CHAR    = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
 const logEl = document.getElementById('log');
 const statusEl = document.getElementById('status');
@@ -133,14 +131,16 @@ function arrayBufferToBase64(buffer){
 async function upload(){
   const file = fileInput.files[0];
   if(!file){ alert('Select a file first'); return; }
+  if(!filenameInput.value.trim()){
+    filenameInput.value = file.name; // default to selected filename
+  }
   const filename = filenameInput.value.trim();
-  if(!filename){ alert('Enter a filename'); return; }
 
   setStatus('Reading file...');
   const buf = await file.arrayBuffer();
   const base64 = arrayBufferToBase64(buf);
 
-  const chunkSize = 400; // safe size for Espruino REPL
+  const chunkSize = 400;
   const chunks = [];
   for(let i=0;i<base64.length;i+=chunkSize){
     chunks.push(base64.slice(i,i+chunkSize));
@@ -169,6 +169,12 @@ async function upload(){
 connectBtn.addEventListener('click', connect);
 uploadBtn.addEventListener('click', upload);
 disconnectBtn.addEventListener('click', disconnect);
+
+fileInput.addEventListener('change', ()=>{
+  if(fileInput.files.length){
+    filenameInput.value = fileInput.files[0].name;
+  }
+});
 
 if(!navigator.bluetooth){
   setStatus('Web Bluetooth API not available in this browser. Use Chrome/Edge on Desktop or Android.');
