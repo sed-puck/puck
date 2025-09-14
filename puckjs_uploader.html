@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Puck.js Storage Uploader (Web Bluetooth)</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:24px}
+    .card{max-width:820px;margin:auto;padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+    input[type=file]{display:block}
+    button{margin-top:8px;padding:8px 12px;border-radius:8px;border:1px solid #ccc;background:#f6f6f6}
+    progress{width:100%;height:18px}
+    pre{background:#111;color:#eee;padding:12px;border-radius:8px;overflow:auto}
+    label{display:block;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Puck.js Storage Uploader</h1>
+    <p>Upload a packed-BCD encoded file from your browser to <strong>Puck.js</strong> over Web Bluetooth (Nordic UART Service).</p>
+
+    <label>Choose file (packed BCD binary): <input id="file" type="file" /></label>
+    <label>Upload filename (on Puck.js Storage): <input id="filename" type="text" placeholder="example.bin" /></label>
+    <label><input id="requireAck" type="checkbox" /> Require device ACK between chunks (toggle if your Puck-side code supports it)</label>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button id="connectBtn">Connect to Puck.js</button>
+      <button id="uploadBtn" disabled>Upload file to Storage</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <label>Progress:</label>
+    <progress id="progress" value="0" max="100"></progress>
+    <div id="status" style="margin-top:8px;font-size:0.95rem;color:#333">Idle</div>
+
+    <h3>Console</h3>
+    <pre id="log"></pre>
+    <p style="font-size:0.85rem;color:#666">Notes: This page sends Espruino commands to the Puck.js REPL to write the uploaded file into <code>require('Storage')</code>. Data is base64 encoded and written in chunks.</p>
+  </div>
+
+<script>
+// CONFIG: Nordic UART Service (NUS) UUIDs commonly used by Puck.js
+const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX_CHAR    = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // write from central -> puck
+const NUS_RX_CHAR    = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notify from puck -> central
+
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const progressEl = document.getElementById('progress');
+const connectBtn = document.getElementById('connectBtn');
+const uploadBtn = document.getElementById('uploadBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const fileInput = document.getElementById('file');
+const filenameInput = document.getElementById('filename');
+
+let device, server, nusService, txChar, rxChar;
+
+function log(...args){
+  console.log(...args);
+  logEl.textContent += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(s){ statusEl.textContent = s; }
+
+async function connect(){
+  try{
+    log('Requesting Bluetooth device...');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{namePrefix: 'Puck'}, {services: [NUS_SERVICE_UUID]}],
+      optionalServices: [NUS_SERVICE_UUID]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    log('Connecting to GATT...');
+    server = await device.gatt.connect();
+    log('Getting service...');
+    nusService = await server.getPrimaryService(NUS_SERVICE_UUID);
+    txChar = await nusService.getCharacteristic(NUS_TX_CHAR);
+    try{ rxChar = await nusService.getCharacteristic(NUS_RX_CHAR); }
+    catch(e){ rxChar = null; log('No RX characteristic (notifications) available.'); }
+
+    if(rxChar){
+      await rxChar.startNotifications();
+      rxChar.addEventListener('characteristicvaluechanged', handleNotification);
+    }
+
+    setStatus('Connected to ' + (device.name || device.id));
+    uploadBtn.disabled = false;
+    disconnectBtn.disabled = false;
+    connectBtn.disabled = true;
+    log('Ready.');
+  }catch(err){ log('Connection failed:', err); setStatus('Connection failed: ' + err); }
+}
+
+function onDisconnected(){
+  log('Device disconnected');
+  setStatus('Disconnected');
+  uploadBtn.disabled = true;
+  disconnectBtn.disabled = true;
+  connectBtn.disabled = false;
+}
+
+async function disconnect(){ if(device && device.gatt.connected) await device.gatt.disconnect(); }
+
+function handleNotification(e){
+  const value = e.target.value;
+  let str = '';
+  try{
+    for(let i=0;i<value.byteLength;i++){
+      const b = value.getUint8(i);
+      if(b>=32 && b<=126) str += String.fromCharCode(b); else str += '\\x' + b.toString(16).padStart(2,'0');
+    }
+  }catch(e){ str = '<unparseable>' }
+  log('RX:', str);
+}
+
+async function writeCommand(cmd){
+  if(!txChar) throw new Error('No TX characteristic');
+  const data = new TextEncoder().encode(cmd + "\n");
+  await txChar.writeValue(data);
+}
+
+function arrayBufferToBase64(buffer){
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunkSize){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function upload(){
+  const file = fileInput.files[0];
+  if(!file){ alert('Select a file first'); return; }
+  const filename = filenameInput.value.trim();
+  if(!filename){ alert('Enter a filename'); return; }
+
+  setStatus('Reading file...');
+  const buf = await file.arrayBuffer();
+  const base64 = arrayBufferToBase64(buf);
+
+  const chunkSize = 400; // safe size for Espruino REPL
+  const chunks = [];
+  for(let i=0;i<base64.length;i+=chunkSize){
+    chunks.push(base64.slice(i,i+chunkSize));
+  }
+  log('Prepared', chunks.length, 'chunks');
+
+  setStatus('Opening file on Puck...');
+  await writeCommand(`f=require('Storage').open('${filename}','w')`);
+
+  setStatus('Uploading...');
+  progressEl.value = 0;
+  progressEl.max = chunks.length;
+
+  for(let i=0;i<chunks.length;i++){
+    const cmd = `f.write(atob('${chunks[i]}'))`;
+    await writeCommand(cmd);
+    progressEl.value = i+1;
+    await new Promise(r=>setTimeout(r,30));
+  }
+
+  await writeCommand('f=undefined');
+  setStatus('Upload complete');
+  log('Upload finished. Sent', buf.byteLength, 'bytes');
+}
+
+connectBtn.addEventListener('click', connect);
+uploadBtn.addEventListener('click', upload);
+disconnectBtn.addEventListener('click', disconnect);
+
+if(!navigator.bluetooth){
+  setStatus('Web Bluetooth API not available in this browser. Use Chrome/Edge on Desktop or Android.');
+}
+</script>
+</body>
+</html>
