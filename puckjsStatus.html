@@ -59,7 +59,7 @@
         }
 
         // Get current time
-        connection.on('data', function(d) {console.log("DATA: " + d});
+        connection.on('data', function(d) {console.log("DATA: " + d)});
         connection.on('close', function() {});
         connection.write("JSON.stringify(Date())\n", function(d) {
           try {
