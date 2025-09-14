@@ -59,13 +59,16 @@
         }
 
         // Get current time
-        connection.on('data', function(d) {console.log("DATA: " + d)});
+        connection.on('data', function(d) {
+            console.log("DATA: " + d)
+            document.getElementById("time").innerText = JSON.parse(d);
+        });
         connection.on('close', function() {});
         connection.write("JSON.stringify(Date())\n", function(d) {
           try {
-            document.getElementById("time").innerText = JSON.parse(d);
+            console.log("SENT");
           } catch (e) {
-            document.getElementById("time").innerText = d;
+            console.log("ERROR: " + e);
           }
         });
 
