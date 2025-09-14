@@ -51,6 +51,7 @@
 
   <script>
     function connectPuck() {
+      Puck.debug = 3;
       Puck.connect(function(connection) {
         if (!connection) {
           alert("Couldn't connect!");
@@ -58,7 +59,7 @@
         }
 
         // Get current time
-        connection.on('data', function(d) {debug.log("DATA: " + d});
+        connection.on('data', function(d) {console.log("DATA: " + d});
         connection.on('close', function() {});
         connection.write("JSON.stringify(Date())\n", function(d) {
           try {
