@@ -58,6 +58,8 @@
         }
 
         // Get current time
+        connection.on('data', function(d) {debug.log("DATA: " + d});
+        connection.on('close', function() {});
         connection.write("JSON.stringify(Date())\n", function(d) {
           try {
             document.getElementById("time").innerText = JSON.parse(d);
@@ -67,14 +69,14 @@
         });
 
         // List files in storage
-        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
-          try {
-            let files = JSON.parse(d);
-            document.getElementById("files").innerText = files.join('\n');
-          } catch (e) {
-            document.getElementById("files").innerText = d;
-          }
-        });
+        //connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+          //try {
+            //let files = JSON.parse(d);
+            //document.getElementById("files").innerText = files.join('\n');
+          //} catch (e) {
+            //document.getElementById("files").innerText = d;
+          //}
+        //});
       });
     }
   </script>
