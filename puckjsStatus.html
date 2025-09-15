@@ -107,6 +107,11 @@
             if (chunk.indexOf(">") >= 0) {
                 console.log("RESULT: " + buffer);
                 processList[currentIdx](buffer);
+
+                currentIdx += 1;
+                if(currentIdx < getList.length) {
+                    getList[currentIdx](connection);
+                }
             }
             //document.getElementById("time").innerText = JSON.parse(d);
         });
