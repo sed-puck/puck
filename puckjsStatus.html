@@ -69,7 +69,7 @@
             //document.getElementById("time").innerText = JSON.parse(d);
         });
         connection.on('close', function() {});
-        connection.write("Date()\n", function(d) {
+        connection.write("JSON.stringify(Date())\n", function(d) {
           try {
             console.log("SENT");
           } catch (e) {
