@@ -94,7 +94,7 @@
 
         // Handle data event
         connection.on('data', function(d) {
-            console.log("DATA: " + d);
+//            console.log("DATA: " + d);
 
             let chunk;
             if (typeof d === 'string') chunk = d;
@@ -105,19 +105,28 @@
             buffer += chunk;
             console.log("INDEX: " + chunk.indexOf(">"));
             if (chunk.indexOf(">") >= 0) {
-                console.log("RESULT: " + buffer);
+//                console.log("RESULT: " + buffer);
                 processList[currentIdx](buffer);
 
                 currentIdx += 1;
                 if(currentIdx < getList.length) {
+                    buffer = "";
                     getList[currentIdx](connection);
                 }
+                //else {
+                    //try {
+                        //connection.close();
+                    //} catch (e) {
+                        //console.log("ERROR: " + e);
+                    //}
+                //}
             }
             //document.getElementById("time").innerText = JSON.parse(d);
         });
 
         connection.on('close', function() {});
-
+        currentIdx = 0;
+        buffer = "";
         getList[currentIdx](connection);
 
         //connection.write("JSON.stringify(Date())\n", function(d) {
