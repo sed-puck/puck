@@ -76,7 +76,7 @@
             }
             //document.getElementById("time").innerText = JSON.parse(d);
         });
-//        connection.on('close', function() {});
+        connection.on('close', function() {});
         connection.write("JSON.stringify(Date())\n", function(d) {
           try {
             console.log("SENT");
@@ -86,10 +86,10 @@
         });
 
         //List files in storage
-        connection.on('data', function(d) {
-            console.log("DATA: " + d)
-            //document.getElementById("files").innerText = files.join('\n');
-        });
+        //connection.on('data', function(d) {
+            //console.log("DATA: " + d)
+            ////document.getElementById("files").innerText = files.join('\n');
+        //});
         connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
           try {
             console.log("SENT");
