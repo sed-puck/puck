@@ -70,6 +70,7 @@
               catch (e) { chunk = String(d); }
             }
             buffer += chunk;
+            console.log("INDEX: " + chunk.indexOf(">"));
             if (chunk.indexOf(">") >= 0) {
                 console.log("RESULT: " + buffer);
             }
