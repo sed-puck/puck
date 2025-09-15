@@ -62,7 +62,7 @@
         // Get current time
         connection.on('data', function(d) {
             console.log("DATA: " + d)
-            recdata += d;
+            recData += d;
             if (d.indexOf(">") >= 0) {
                 console.log("RESULT: " +recData);
             }
