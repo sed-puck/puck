@@ -54,7 +54,7 @@
       let getList = [getDate, getFiles];
       let currentIdx = 0;
 
-    function getDate() {
+    function getDate(connection) {
         connection.write("JSON.stringify(Date())\n", function(d) {
             try {
                 console.log("SENT");
@@ -64,7 +64,7 @@
         });
     }
 
-    function getFiles() {
+    function getFiles(connection) {
         connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
           try {
             console.log("SENT");
@@ -113,7 +113,7 @@
 
         connection.on('close', function() {});
 
-        getList[currentIdx]();
+        getList[currentIdx](connection);
 
         //connection.write("JSON.stringify(Date())\n", function(d) {
           //try {
