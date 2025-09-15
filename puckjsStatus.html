@@ -50,7 +50,40 @@
   </div>
 
   <script>
+      let processList = [processDate, processFiles];
+      let getList = [getDate, getFiles];
+      let currentIdx = 0;
+
+    function getDate() {
+        connection.write("JSON.stringify(Date())\n", function(d) {
+            try {
+                console.log("SENT");
+            } catch (e) {
+                console.log("ERROR: " + e);
+            }
+        });
+    }
+
+    function getFiles() {
+        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+          try {
+            console.log("SENT");
+          } catch (e) {
+            console.log("ERROR: " + e);
+          }
+        });
+    }
+
+    function processDate(d) {
+        console.log("DATE DATA: " + d);
+    }
+
+    function processFiles(d) {
+        console.log("FILE DATA: " + d);
+    }
+
     function connectPuck() {
+
       let buffer = "";
       Puck.debug = 3;
       Puck.connect(function(connection) {
@@ -59,7 +92,7 @@
           return;
         }
 
-        // Get current time
+        // Handle data event
         connection.on('data', function(d) {
             console.log("DATA: " + d);
 
@@ -73,30 +106,35 @@
             console.log("INDEX: " + chunk.indexOf(">"));
             if (chunk.indexOf(">") >= 0) {
                 console.log("RESULT: " + buffer);
+                processList[currentIdx]();
             }
             //document.getElementById("time").innerText = JSON.parse(d);
         });
+
         connection.on('close', function() {});
-        connection.write("JSON.stringify(Date())\n", function(d) {
-          try {
-            console.log("SENT");
-          } catch (e) {
-            console.log("ERROR: " + e);
-          }
-        });
+
+        getList[currentIdx]();
+
+        //connection.write("JSON.stringify(Date())\n", function(d) {
+          //try {
+            //console.log("SENT");
+          //} catch (e) {
+            //console.log("ERROR: " + e);
+          //}
+        //});
 
         //List files in storage
         //connection.on('data', function(d) {
             //console.log("DATA: " + d)
             ////document.getElementById("files").innerText = files.join('\n');
         //});
-        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
-          try {
-            console.log("SENT");
-          } catch (e) {
-            console.log("ERROR: " + e);
-          }
-        });
+        //connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+          //try {
+            //console.log("SENT");
+          //} catch (e) {
+            //console.log("ERROR: " + e);
+          //}
+        //});
       });
     }
   </script>
