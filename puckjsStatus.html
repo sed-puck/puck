@@ -51,6 +51,7 @@
 
   <script>
     function connectPuck() {
+      let recData = "";
       Puck.debug = 3;
       Puck.connect(function(connection) {
         if (!connection) {
@@ -61,6 +62,10 @@
         // Get current time
         connection.on('data', function(d) {
             console.log("DATA: " + d)
+            recdata += d;
+            if (d.indexOf(">") >= 0) {
+                console.log("RESULT: " +recData);
+            }
             //document.getElementById("time").innerText = JSON.parse(d);
         });
         connection.on('close', function() {});
