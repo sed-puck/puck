@@ -119,52 +119,51 @@
         currentIdx = 0;
         buffer = "";
         if(!puckConnection) {
-        Puck.connect(function(connection) {
-        if (!connection) {
-          alert("Couldn't connect!");
-          return;
+            Puck.connect(function(connection) {
+            if (!connection) {
+              alert("Couldn't connect!");
+              return;
+            }
+            else {
+                puckConnection = connection;
+            }
+            // Handle data event
+            puckConnection.on('data', receiveData);
+            puckConnection.on('close', function() { console.log("CONNECTION CLOSE")});
+
+            setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
+
+
+               // if(puckConnection.isOpen) startCommands(puckConnection);
+
+
+
+                    //connection.write("JSON.stringify(Date())\n", function(d) {
+                      //try {
+                        //console.log("SENT");
+                      //} catch (e) {
+                        //console.log("ERROR: " + e);
+                      //}
+                    //});
+
+                    //List files in storage
+                    //connection.on('data', function(d) {
+                        //console.log("DATA: " + d)
+                        ////document.getElementById("files").innerText = files.join('\n');
+                    //});
+                    //connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+                      //try {
+                        //console.log("SENT");
+                      //} catch (e) {
+                        //console.log("ERROR: " + e);
+                      //}
+                    //});
+            });
         }
         else {
-            puckConnection = connection;
+            setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
         }
-        // Handle data event
-        puckConnection.on('data', receiveData);
-        puckConnection.on('close', function() { console.log("CONNECTION CLOSE")});
-
-        setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
-
-
-   // if(puckConnection.isOpen) startCommands(puckConnection);
-
-
-
-        //connection.write("JSON.stringify(Date())\n", function(d) {
-          //try {
-            //console.log("SENT");
-          //} catch (e) {
-            //console.log("ERROR: " + e);
-          //}
-        //});
-
-        //List files in storage
-        //connection.on('data', function(d) {
-            //console.log("DATA: " + d)
-            ////document.getElementById("files").innerText = files.join('\n');
-        //});
-        //connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
-          //try {
-            //console.log("SENT");
-          //} catch (e) {
-            //console.log("ERROR: " + e);
-          //}
-        //});
-      });
-  }
-  else {
-    setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
-  }
-
-  }
+    }
 
   </script>
 </body>
