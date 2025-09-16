@@ -180,7 +180,6 @@
         let spos = d.indexOf("=");
         let epos = d.indexOf(">");
         epos -= 3;
-        console.log("STRING: " + spos + " : " + epos);
         if(spos > 0) {
             spos += 6;
             let msg = d.substring(spos,epos);
@@ -195,13 +194,11 @@
         let epos = d.indexOf(">");
         spos += 2;
         epos -= 3;
-        console.log("STRING: " + spos + " : " + epos);
         if(spos > 0) {
             let msg = d.substring(spos,epos);
             msg = msg.replaceAll('\\','');
             console.log("MSG: " + msg);
             files = JSON.parse(msg);
-            console.log("PARSE: " + files);
             renderFiles(files);
         }
     }
@@ -268,10 +265,9 @@
                 let processFunc = getProcessFunc(currentFuncList[currentIdx]);
                 processFunc(buffer);
                 currentIdx += 1;
-                console.log("INDEX: " + currentIdx + " : " + currentFuncList.length);
                 buffer = "";
                 if(currentIdx < currentFuncList.length) {
-                    setTimeout(() => {console.log("INDEX: " + currentIdx); getCallFunc(currentFuncList[currentIdx])(puckConnection);
+                    setTimeout(() => { getCallFunc(currentFuncList[currentIdx])(puckConnection);
                     }, 100);
                 }
             }
@@ -310,7 +306,7 @@
     }
 
     function connectPuck() {
-        Puck.debug = 3;
+       // Puck.debug = 3;
         currentIdx = 0;
         buffer = "";
         if(!puckConnection) {
