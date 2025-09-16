@@ -50,12 +50,8 @@
   </div>
 
   <script>
-      let processList = [processDate, processFiles];
-      let getList = [getDate, getFiles];
-      let currentIdx = 0;
-
-    function getDate(connection) {
-        connection.write("JSON.stringify(Date())\n", function(d) {
+    function getDate(conn) {
+        conn.write("JSON.stringify(Date())\n", function(d) {
             try {
                 console.log("SENT");
             } catch (e) {
@@ -64,8 +60,8 @@
         });
     }
 
-    function getFiles(connection) {
-        connection.write("JSON.stringify(require('Storage').list())\n", function(d) {
+    function getFiles(conn) {
+        conn.write("JSON.stringify(require('Storage').list())\n", function(d) {
           try {
             console.log("SENT");
           } catch (e) {
@@ -82,52 +78,65 @@
         console.log("FILE DATA: " + d);
     }
 
-    function connectPuck() {
+    function startCommands() {
+        currentIdx = 0;
+        buffer = "";
+        functionList[currentIdx](puckConnection);
+    }
 
-      let buffer = "";
-      Puck.debug = 3;
-      Puck.connect(function(connection) {
+    function receiveData(d) {
+        console.log("IN DATA: " + d);
+        let chunk = "";
+        if (typeof d === 'string') chunk = d;
+        else {
+          try { chunk = new TextDecoder().decode(d); }
+          catch (e) { chunk = String(d); }
+        }
+
+        buffer += chunk;
+        if (chunk.indexOf(">") >= 0) {
+            if(currentIdx < functionList.length) {
+                processList[currentIdx](buffer);
+                currentIdx += 1;
+                console.log("INDEX: " + currentIdx + " : " + functionList.length);
+                buffer = "";
+                if(currentIdx < functionList.length) {
+                    setTimeout(() => {console.log("INDEX: " + currentIdx); functionList[currentIdx](puckConnection);
+                    }, 100);
+                }
+            }
+        }
+    }
+
+    var processList = [processDate, processFiles];
+    var functionList = [getDate, getFiles];
+    var currentIdx = 0;
+    var buffer = "";
+    var puckConnection;
+
+    function connectPuck() {
+        Puck.debug = 3;
+        currentIdx = 0;
+        buffer = "";
+        if(!puckConnection) {
+        Puck.connect(function(connection) {
         if (!connection) {
           alert("Couldn't connect!");
           return;
         }
-
+        else {
+            puckConnection = connection;
+        }
         // Handle data event
-        connection.on('data', function(d) {
-//            console.log("DATA: " + d);
+        puckConnection.on('data', receiveData);
+        puckConnection.on('close', function() { console.log("CONNECTION CLOSE")});
 
-            let chunk;
-            if (typeof d === 'string') chunk = d;
-            else {
-              try { chunk = new TextDecoder().decode(d); }
-              catch (e) { chunk = String(d); }
-            }
-            buffer += chunk;
-            console.log("INDEX: " + chunk.indexOf(">"));
-            if (chunk.indexOf(">") >= 0) {
-//                console.log("RESULT: " + buffer);
-                processList[currentIdx](buffer);
+        setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
 
-                currentIdx += 1;
-                if(currentIdx < getList.length) {
-                    buffer = "";
-                    getList[currentIdx](connection);
-                }
-                //else {
-                    //try {
-                        //connection.close();
-                    //} catch (e) {
-                        //console.log("ERROR: " + e);
-                    //}
-                //}
-            }
-            //document.getElementById("time").innerText = JSON.parse(d);
-        });
 
-        connection.on('close', function() {});
-        currentIdx = 0;
-        buffer = "";
-        getList[currentIdx](connection);
+   // if(puckConnection.isOpen) startCommands(puckConnection);
+
+
 
         //connection.write("JSON.stringify(Date())\n", function(d) {
           //try {
@@ -150,7 +159,13 @@
           //}
         //});
       });
-    }
+  }
+  else {
+    setTimeout(() => {if(puckConnection.isOpen) startCommands();},100);
+  }
+
+  }
+
   </script>
 </body>
 </html>
