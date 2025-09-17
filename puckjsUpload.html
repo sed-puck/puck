@@ -18,6 +18,13 @@
         position: relative;
         width: 300px;
     }
+    h3 {
+        margin-top: 8px;
+        margin-bottom: 4px;
+        font-weight: normal;
+        font-size:18px;
+        color: #555;
+    }
     .card {
         max-width:820px;
         margin:auto;padding:18px;
@@ -27,7 +34,7 @@
     input[type="file"], input[type="text"] {
         box-sizing: border-box;
         width: 100%;
-        padding: 8px;
+        padding: 6px;
         margin-bottom: 12px;
         border-radius: 6px;
         border: 1px solid #ccc;
@@ -63,10 +70,12 @@
     label {
         display:block;
         margin-top:10px
+        font-size: 14px;
     }
     .button-row {
         text-align: right;
         margin-top: 20px;
+
     }
     button, .back-button {
         bottom: 15px;
@@ -87,6 +96,15 @@
         background-color: #007BFF;
         color: #fff;
     }
+    .statusDiv {
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-top:8px;
+        margin-bottom:8px;
+        font-size:14px;
+        padding: 4px;
+        color:#333"
+    }
 
   </style>
 </head>
@@ -94,9 +112,9 @@
   <div class="container">
 
     <h1>File Uploader</h1>
-    <p>Upload a file from your browser to Puck.js over Web Bluetooth (Nordic UART Service).</p>
+    <p>Upload a file to Puck.js over<br />Web Bluetooth</p>
     <input id="file" type="file" />
-    <label>Upload filename (on Puck.js Storage): <input id="filename" type="text" placeholder="example.bin" /></label>
+    <label>Upload filename <input id="filename" type="text" placeholder="No name chosen" /></label>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button id="connectBtn">Connect to Puck.js</button>
@@ -106,14 +124,12 @@
 
     <label>Progress:</label>
     <progress id="progress" value="0" max="100"></progress>
-    <div id="status" style="margin-top:8px;font-size:0.95rem;color:#333">Idle</div>
+    <div id="status" class="statusDiv">Idle</div>
     <div class="button-row">
       <a href="javascript:window.history.back();" class="back-button">Back</a>
     </div>
     <h3>Console</h3>
-    <pre id="log"></pre>
-    <p style="font-size:0.85rem;color:#666">Notes: This page sends Espruino commands to the Puck.js REPL to write the uploaded file into <code>require('Storage')</code>. Data is base64 encoded and written in chunks.</p>
-
+    <pre id="log"  style="margin-top:3px"></pre>
   </div>
 
 <script>
@@ -130,8 +146,13 @@ const disconnectBtn = document.getElementById('disconnectBtn');
 const fileInput = document.getElementById('file');
 const filenameInput = document.getElementById('filename');
 const CHUNKSIZE = 384;// or any multiple of 96 for atob/btoa
+//const CHUNKSIZE = 288;// or any multiple of 96 for atob/btoa
+const TX_CHUNKSIZE = 20;
 
 let device, server, nusService, txChar, rxChar;
+
+let sendSize = 0;
+let sentBytes = 0;
 
 function log(...args){
   console.log(...args);
@@ -191,77 +212,103 @@ function handleNotification(e){
   }catch(e){ str = '<unparseable>' }
   //log('RX:', str);
 }
-  function stringToArrayBuffer(str) {
-    var buf=new Uint8Array(str.length);
-    for (var i=0; i<str.length; i++) {
-      var ch = str.charCodeAt(i);
-      if (ch>=256) {
-        console.warn("stringToArrayBuffer got non-8 bit character - code "+ch);
-        ch = "?".charCodeAt(0);
-      }
-      buf[i] = ch;
+
+  function str2ab(str) {
+    var buf = new ArrayBuffer(str.length);
+    var bufView = new Uint8Array(buf);
+    for (var i=0, strLen=str.length; i<strLen; i++) {
+      bufView[i] = str.charCodeAt(i);
     }
-    return buf.buffer;
+    return buf;
   }
 
 async function writeCommand(cmd){
   if(!txChar) throw new Error('No TX characteristic');
 //  const data = new TextEncoder().encode(cmd + "\n");
 //console.log("WRITE: " + data);
-  await txChar.writeValue(stringToArrayBuffer(cmd));
+  await txChar.writeValue(cmd);
+
 }
 
-function arrayBufferToBase64(buffer){
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  for(let i=0;i<bytes.length;i+=chunkSize){
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunkSize));
-  }
-  return btoa(binary);
-}
-
-/**
+/*
    * Get the JS needed to upload a file
+   * Splits an ArrayBuffer into chunks of Uint8Array and processes each chunk.
    * @param {string} fileName Path to file to upload
-   * @param {string} contents Contents of the file being uploaded
+    *@param {ArrayBuffer} content -The input ArrayBuffer containing 8-bit values.
+    * @param {number} chunkSize - The size of each chunk.
    * @returns {string} JS code needed to upload file
    */
-  function getUploadFileCode(fileName, contents) {
+  function processArrayBufferInChunks(fileName, contents, chuncksize) {
     var js = [];
     if (fileName.length==0 || fileName.length>28) {
       throw new Error("Invalid filename length");
     }
+    if (!(contents instanceof ArrayBuffer)) {
+      throw new TypeError("First argument must be an ArrayBuffer.");
+    }
+    if (typeof chuncksize !== "number" || chuncksize <= 0) {
+      throw new RangeError("chuncksize must be a positive number.");
+    }
     var fn = JSON.stringify(fileName);
-    let chunckSize = 0;
-    let arrayPos = 0;
-    if(contents.length < CHUNKSIZE) {
-        chunckSize = contents.length;
+
+    const view = new Uint8Array(contents);
+    const totalLength = view.length;
+
+    for (let i = 0; i < totalLength; i += chuncksize) {
+      const chunk = view.subarray(i, i + chuncksize);
+      let jsstr = `require("Storage").write(${fn},atob(${JSON.stringify(chunk.toBase64())}),${i}${(i==0)?"," + view.length:""})`
+      //console.log("JSSTR: " + jsstr);
+      js.push(jsstr + "\n");
     }
-    else {
-        chunckSize = CHUNKSIZE
-    }
-    console.log("LEN: " + contents.length + " : " + chunckSize);
-    for (var i=0;i<contents.length;i+=chunckSize) {
-      let part = new Uint8Array(chunckSize);
-      for(j=0; j<part.length; j++) {
-          part[j] = contents[i+j];
-      }
-        console.log("PART1: " + part);
-      if((contents.length - i) < CHUNKSIZE) {
-        chunckSize = contents.length - i;
-      }
-      else {
-        chunckSize = CHUNKSIZE;
-      }
-      console.log("PART2: " + part);
-      let jsstr = `require("Storage").write(${fn},atob(${JSON.stringify(part.toBase64())}),${i}${(i==0)?","+contents.length:""})`
-    console.log("JSSTR: " + jsstr);
-      js.push(jsstr);
-    }
-    return js.join("\n");
+    return js
   }
 
+/**
+ * Splits an ArrayBuffer into chunks of a given size.
+ *
+ * @param {ArrayBuffer} buffer - The input ArrayBuffer.
+ * @param {number} chunkSize - The maximum size (in bytes) of each chunk.
+ * @returns {ArrayBuffer[]} An array of smaller ArrayBuffers.
+ */
+function chunkArrayBuffer(buffer, chunkSize) {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new TypeError("Input must be an ArrayBuffer");
+  }
+  if (chunkSize <= 0) {
+    throw new RangeError("chunkSize must be greater than 0");
+  }
+
+  const result = [];
+  const totalSize = buffer.byteLength;
+
+  for (let offset = 0; offset < totalSize; offset += chunkSize) {
+    const end = Math.min(offset + chunkSize, totalSize);
+    result.push(buffer.slice(offset, end));
+  }
+
+  return result;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function updateProgress(chunkLen) {
+    sentBytes += chunkLen;
+    progressEl.value = (sentBytes*100)/sendSize;
+}
+
+
+async function sendCommandChunked(cmd) {
+    let cmdbuf = str2ab(cmd);
+    let  chunks = chunkArrayBuffer(cmdbuf,TX_CHUNKSIZE);
+    for( i=0; i < chunks.length; i++) {
+        let b = new Uint8Array(chunks[i]);
+
+        await writeCommand(b);
+        wait(100).then(() => { updateProgress(TX_CHUNKSIZE); });
+    }
+}
 
 async function upload(){
   const file = fileInput.files[0];
@@ -273,24 +320,26 @@ async function upload(){
 
   setStatus('Reading file...');
   const buf = await file.arrayBuffer();
-  const view = new Uint8Array(buf);
-    console.log("VIEW LEN: " + view.length);
+  let js = processArrayBufferInChunks(filename, buf, CHUNKSIZE); //.replace(/\n/g,"\n\x10");
 
-  let js = getUploadFileCode(filename, view); //.replace(/\n/g,"\n\x10");
-  console.log("JS: " + js.length);
+  // Calculate number of bytes to send
+  progressEl.value = 0;
+  for(let i=0;i<js.length;i++) {
+      sendSize += js[i].length;
+  }
+  //console.log("DATA SIZE: " + sendSize);
 
   setStatus('Uploading file');
 
   for(let i=0;i<js.length;i++){
     const cmd = js[i];
-    //console.log("JSCMD: " + cmd);
-    //await writeCommand(cmd);
-    progressEl.value = ((i+1)*100)/js.length;
-    await new Promise(r=>setTimeout(r,30));
+//    console.log("JSCMD: " + js.length + " : " + cmd);
+    await sendCommandChunked(cmd);
+    wait(100).then(() => { updateProgress(TX_CHUNKSIZE); });
   }
 
   setStatus('Upload complete');
-  log('Upload finished. Sent', buf.byteLength, 'bytes');
+  log('Upload finished. Sent', sendSize, 'bytes\nFile size:', buf.byteLength, 'bytes');
 }
 
 connectBtn.addEventListener('click', connect);
