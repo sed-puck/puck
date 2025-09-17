@@ -24,13 +24,13 @@
         position: relative;
         width: 300px;
     }
-    h2 {
+    h3 {
         margin-bottom: 8px;
         font-weight: normal;
         font-size: 20px;
         color: #555;
     }
-    h3 {
+    h4 {
         margin-top: 8px;
         margin-bottom: 8px;
         font-weight: normal;
@@ -39,7 +39,7 @@
     }
     p {
         margin-top: 8px;
-        padding: 4px;
+        padding: 4px 2px 4px 2px;
         border:1px solid #ccc;
         border-radius: 8px;
         font-size: 14px;
@@ -116,14 +116,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>Blue Controller</h1>
+    <h2>Blue Controller</h2>
     <button onclick="connectPuck()">Connect to Puck.js</button>
-    <h3 id="connection">No connection</h3>
+    <h4 id="connection">No connection</h4>
     <div id="output">
-      <h2>Current Time</h2>
+      <h3>Current Time</h3>
       <p id="time">Not connected</p>
       <button id="saveButton" onclick="setTime()" disabled >Set time</button>
-      <h2>Files in Storage</h2>
+      <h3>Files in Storage</h3>
       <div id="files">Not connected</div>
     </div>
     <div class="button-row">
@@ -132,6 +132,7 @@
  </div>
   <script>
     const filesEl = document.getElementById('files');
+    var fileToDelete = "";
 
   function renderFiles(files) {
     filesEl.innerHTML = "";
@@ -147,9 +148,9 @@
                 const ok = confirm(`Are you sure you want to delete "${name}"?`);
                 if (!ok) return;
                 try {
-                  await deleteFile(name);
-                  await refreshInfo();
-                  alert("Deleted " + name);
+                    fileToDelete = name;
+                    deleteFile();
+
                 } catch (err) {
                   alert("Error deleting file: " + err.message);
                 }
@@ -186,7 +187,7 @@
         console.log("DATE DATA: " + d);
         let spos = d.indexOf("=");
         let epos = d.indexOf(">");
-        epos -= 3;
+        epos -= 2;
         if(spos > 0) {
             spos += 6;
             let msg = d.substring(spos,epos);
@@ -216,6 +217,10 @@
 
     function startSetTime() {
         doPuckCall(setDateTimeFunc);
+    }
+
+    function startDeleteFile() {
+        doPuckCall(runDeleteFileFunc);
     }
 
     function setDateTime(conn) {
@@ -257,6 +262,22 @@
         alert("Date set to:\n" + Date(currentSetTime));
     }
 
+    function  doDeleteFile(conn) {
+        let cmd = `require('Storage').erase(${JSON.stringify(fileToDelete)})\n`;
+        console.log("DELETE: " + cmd);
+        conn.write(cmd, function(d) {
+          try {
+            console.log("SENT");
+          } catch (e) {
+            console.log("ERROR: " + e);
+          }
+        });
+    }
+
+    function processDeleteFile(d) {
+        console.log("DELETE FILE RESPONSE: " + d);
+    }
+
     function receiveData(d) {
         console.log("IN DATA: " + d);
         let chunk = "";
@@ -284,10 +305,12 @@
     var puckFunctions ={    dateFunc: { call: getDate, resp: processDate},
                             filesFunc: {call: getFiles, resp: processFiles},
                             setDateTimeFunc: {call: setDateTime, resp: processDateTme},
-                            setTimeZoneFunc: {call: setTimeZone, resp: processTimeZone}
+                            setTimeZoneFunc: {call: setTimeZone, resp: processTimeZone},
+                            deleteFileFunc: {call: doDeleteFile, resp: processDeleteFile}
                        };
     var getDateFileFuncs = ["dateFunc","filesFunc"];
     var setDateTimeFunc = ["setDateTimeFunc", "setTimeZoneFunc"];
+    var runDeleteFileFunc = ["deleteFileFunc", "filesFunc"];
 
     var currentIdx = 0;
     var buffer = "";
@@ -342,6 +365,9 @@
 
     function setTime() {
         setTimeout(() => {if(puckConnection.isOpen) startSetTime();},100);
+    }
+    function deleteFile() {
+        setTimeout(() => {if(puckConnection.isOpen) startDeleteFile();},100);
     }
   </script>
 
