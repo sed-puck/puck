@@ -54,6 +54,12 @@
     button:hover {
         background: #0056b3;
     }
+    button:disabled,
+        button[disabled]{
+        border: 1px solid #999999;
+        background-color: #cccccc;
+        color: #666666;
+    }
     progress {
         width:100%;
         height:18px
@@ -311,6 +317,7 @@ async function sendCommandChunked(cmd) {
 }
 
 async function upload(){
+  if(!txChar){ alert('No connection'); return; }
   const file = fileInput.files[0];
   if(!file){ alert('Select a file first'); return; }
   if(!filenameInput.value.trim()){
