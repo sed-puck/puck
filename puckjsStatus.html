@@ -59,20 +59,22 @@
       background: #005fa3;
     }
     button:disabled,
-    button[disabled]{
-    border: 1px solid #999999;
+    button[disabled] {
+    border: none;
     background-color: #cccccc;
     color: #666666;
     }
     .button-row {
-        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-top: 20px;
     }
     button, .back-button {
         bottom: 15px;
         right: 20px;
         padding: 8px 16px;
-        background: ;
+        /*background: ; */
         /*color: #fff;*/
         text-decoration: none;
         border: none;
@@ -112,6 +114,29 @@
   }
   #files button:hover{background:#f88;color:#fff}
   pre{background:#f3f3f3;padding:10px;border-radius:6px;white-space:pre-wrap}
+  button, .set-button {
+    bottom: 15px;
+    left: 20px;
+    padding: 8px 16px;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: background 0.3s;;
+    }
+    .set-button:hover {
+        background: #0056b3;
+    }
+    .set-button {
+        background-color: #007BFF;
+        color: #fff;
+    }
+    .set-button:disabled,
+    .set-button[disabled] {
+        border: none;
+        background-color: #cccccc;
+        color: #666666;
+    }
   </style>
 </head>
 <body>
@@ -127,6 +152,7 @@
       <div id="files">Not connected</div>
     </div>
     <div class="button-row">
+      <button id="closeButton" type="button" onclick="closeConnection()" class="set-button" disabled >Disconnect</button>
       <a href="javascript:window.history.back();" class="back-button">Back</a>
     </div>
  </div>
@@ -342,13 +368,22 @@
         if(!puckConnection) {
             Puck.connect(function(connection) {
                 if (!connection) {
-                  alert("Couldn't connect!");
+                    let btn = document.getElementById("saveButton");
+                    btn.disabled = true;
+                    btn = document.getElementById("closeButton");
+                    btn.disabled = true;
+                   document.getElementById("connection").innerText = "No connection";
+                   document.getElementById("files").innerHTML = "Not connected";
+                   puckConnection = null;
+                  //alert("Couldn't connect!");
                   return;
                 }
                 else {
                     document.getElementById("connection").innerText = "Connected to: " + connection.device.name;
                     puckConnection = connection;
                     let btn = document.getElementById("saveButton");
+                    btn.disabled = false;
+                    btn = document.getElementById("closeButton");
                     btn.disabled = false;
                 }
                 // Handle data event
@@ -363,6 +398,9 @@
         }
     }
 
+    function closeConnection() {
+        puckConnection.close();
+    }
     function setTime() {
         setTimeout(() => {if(puckConnection.isOpen) startSetTime();},100);
     }
