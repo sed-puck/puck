@@ -142,14 +142,14 @@
 <body>
   <div class="container">
     <h2>Blue Controller</h2>
-    <button onclick="connectPuck()">Connect to Puck.js</button>
+    <button id="connectButton" onclick="connectPuck()">Connect to Puck.js</button>
     <h4 id="connection">No connection</h4>
     <div id="output">
       <h3>Current Time</h3>
-      <p id="time">Not connected</p>
+      <p id="time">No connection</p>
       <button id="saveButton" onclick="setTime()" disabled >Set time</button>
       <h3>Files in Storage</h3>
-      <div id="files">Not connected</div>
+      <div id="files">No connection</div>
     </div>
     <div class="button-row">
       <button id="closeButton" type="button" onclick="closeConnection()" class="set-button" disabled >Disconnect</button>
@@ -263,7 +263,7 @@
       });
     }
 
-    function  processDateTme(d) {
+    function  processDateTime(d) {
         console.log("SET DATE DATA: " + d);
     }
 
@@ -330,7 +330,7 @@
 
     var puckFunctions ={    dateFunc: { call: getDate, resp: processDate},
                             filesFunc: {call: getFiles, resp: processFiles},
-                            setDateTimeFunc: {call: setDateTime, resp: processDateTme},
+                            setDateTimeFunc: {call: setDateTime, resp: processDateTime},
                             setTimeZoneFunc: {call: setTimeZone, resp: processTimeZone},
                             deleteFileFunc: {call: doDeleteFile, resp: processDeleteFile}
                        };
@@ -373,12 +373,13 @@
                     btn = document.getElementById("closeButton");
                     btn.disabled = true;
                    document.getElementById("connection").innerText = "No connection";
-                   document.getElementById("files").innerHTML = "Not connected";
+                   document.getElementById("files").innerHTML = "No connection";
                    puckConnection = null;
                   //alert("Couldn't connect!");
                   return;
                 }
                 else {
+                    document.getElementById("connectButton").innerText = "Reload";
                     document.getElementById("connection").innerText = "Connected to: " + connection.device.name;
                     puckConnection = connection;
                     let btn = document.getElementById("saveButton");
@@ -388,7 +389,11 @@
                 }
                 // Handle data event
                 puckConnection.on('data', receiveData);
-                puckConnection.on('close', function() { console.log("CONNECTION CLOSE")});
+                puckConnection.on('close', function() {
+                        document.getElementById("connectButton").innerText = "Connect to Puck.js";
+                        document.getElementById("time").innerText = "No connection";
+                        console.log("CONNECTION CLOSE")
+                });
 
                 setTimeout(() => {if(puckConnection.isOpen) startDateTimeCommands();},100);
             });
