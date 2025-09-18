@@ -170,6 +170,30 @@ let device, server, nusService, txChar, rxChar;
 let sendSize = 0;
 let sentBytes = 0;
 
+  function checkIfSupported() {
+    // Hack for windows
+    if (navigator.platform.indexOf("Win")>=0 &&
+        (navigator.userAgent.indexOf("Chrome/54")>=0 ||
+         navigator.userAgent.indexOf("Chrome/55")>=0 ||
+         navigator.userAgent.indexOf("Chrome/56")>=0)
+        ) {
+      console.warn("Chrome <56 in Windows has navigator.bluetooth but it's not implemented properly");
+      if (confirm("Web Bluetooth on Windows is not yet available.\nPlease click Ok to see other options for using Web Bluetooth"))
+        window.location = "https://www.espruino.com/Puck.js+Quick+Start";
+      return false;
+    }
+    if (navigator.bluetooth) return true;
+    console.warn("No Web Bluetooth on this platform");
+    var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (iOS) {
+      if (confirm("To use Web Bluetooth on iOS you'll need the WebBLE App.\nPlease click Ok to go to the App Store and download it."))
+        window.location = "https://itunes.apple.com/us/app/webble/id1193531073";
+    } else {
+      if (confirm("This Web Browser doesn't support Web Bluetooth.\nPlease click Ok to see instructions for enabling it."))
+        window.location = "https://www.espruino.com/Quick+Start+BLE#with-web-bluetooth";
+    }
+    return false;
+  }
 function log(...args){
   console.log(...args);
   logEl.textContent += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') + '\n';
@@ -180,6 +204,7 @@ function setStatus(s){ statusEl.textContent = s; }
 
 async function connect(){
   try{
+    if (!checkIfSupported()) return;
     log('Requesting Bluetooth device...');
     device = await navigator.bluetooth.requestDevice({
       filters: [{namePrefix: 'Puck'}, {services: [NUS_SERVICE_UUID]}],
